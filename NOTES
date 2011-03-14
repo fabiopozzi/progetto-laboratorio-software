@@ -1,0 +1,38 @@
+1- Genero la libreria originaria
+  Parto con ctest2.c che definisce ctest2.
+  lo compilo con 
+  >gcc -fPIC -Wall -g -c ctest2.c
+
+  Ora genero la libreria originaria: libctest.so
+  >gcc -g -shared -Wl ctest1.o -lc -o libctest.so
+
+  Copio la libreria in /tmp/lib
+  >cp libctest.so /tmp/lib/
+
+2- Scrivo test.c, che sarebbe il nostro wrapper, il quale chiamera' libctest.so
+  tramite una dlopen
+
+3- Lo compilo
+>gcc -fPIC -Wall -g -c test.c
+4- Genero la libreria wrapper che chiamo libtest.so
+>gcc -g -shared -Wl test.o -lc -o libtest.so
+
+5- metto libtest in /tmp/lib
+
+6- Ora scrivo prog.c, il programma che fa uso della funzione definita nella libreria originale e ridefinita nel wrapper.
+
+Compilo prog.c facendogli usare test.so invece di ctest.so, usando -ltest invece di -lctest nella compilazione
+
+> gcc -Wall -L/tmp/lib prog.c -ltest -ldl -o prog
+
+Lanciando ./prog ottengo che verra' prima eseguito il codice nel wrapper, e poi
+la funzione ctest2 invocata da prog.c
+
+** ruby stuff **
+- installa gemma cast per il parsing del codice
+gem install cast
+- installa gemma ruby-elf per il parsing delle librerie
+gem install ruby-elf
+
+NB: require 'rubygems' in tutti gli script
+
