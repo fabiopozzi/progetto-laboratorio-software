@@ -49,8 +49,8 @@ begin
       #params_list = get_params_from_include
 
       wrapped_code = Stuff.init_wrappers(library)
-      #{wrapped_code[function_name]} # inserito nel code_block permette di definire un hash che ad ogni funzione fa corrispondere una
-      # stringa contenente il codice da inserire nella funzione wrapper
+      #{wrapped_code[function_name]} # inserito nel code_block permette di definire un hash 
+      # che ad ogni funzione fa corrispondere il codice da inserire nella funzione wrapper
       code_block= <<END_OF_CODE
 
        void #{function_name}(#{params_list}){
