@@ -36,3 +36,8 @@ gem install ruby-elf
 
 NB: require 'rubygems' in tutti gli script
 
+IDEA: dato che non sono sicuro dei parametri posso sfruttare ruby-ffi.
+Posso facilmente scriptare il binding di codice ruby alla libreria.
+In questo modo posso tentare il binding alla libreria usando tipi diversi per capire quale sia il tipo giusto.
+una volta capito questo uso il generatore di wrapper per generare il wrapper giusto e smanettare con i parametri.
+
