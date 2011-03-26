@@ -12,9 +12,6 @@
 # giving you access to the arguments, you can also take control just before control returns
 # to the caller.
 # See the example in the end for more details.
-# As a standalone application, it hooks WriteFile in the 'notepad' process, and make it
-# skip the first two bytes of the buffer.
-#
 
 require 'metasm'
 
@@ -164,8 +161,6 @@ end
 
 
 
-if __FILE__ == $0
-
 # this is the class you have to define to hook
 # 
 # setup() defines the list of hooks as an array of hashes
@@ -180,13 +175,20 @@ if __FILE__ == $0
 #  skip the function call with finish(fake_retval) (!) needs a correct :abi & param count !
 # the post_hook receives the function return value
 #  change it with patch_ret(newval)
-class MyHook < ApiHook
+class LibraryHook < ApiHook
+
 	def setup
-		[{ :function => 'ctest2', :abi => :stdcall }]
+		@h_hash
+	end
+
+	def initialize(process, function_hash)
+                @arguments = Array.new
+		@h_hash = function_hash
+		super(process)
 	end
 
 	def init_prerun
-		puts "hooks ready, daicazzo"
+		puts "hooks ready, go for it!"
 	end
 
 	def pre_ctest2(handle, pbuf, size)
@@ -195,16 +197,46 @@ class MyHook < ApiHook
 
 		# spy on the api / trace calls
 		#bufdata = @dbg.memory[pbuf, size]
-		argomenti = read_arglist
+		tmp = read_arglist
+                argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
 		#puts "arguments #{argomenti.inspect}"
 		argomenti.each do |arg|
-			puts "argomento #{arg}"
+			addr = arg.to_s(16)
+			puts "argomento #{addr.to_s}"
 		end
+                # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
+                infos = Hash.new
+                infos["name"] = "ctest2"
+                infos["args"] = argomenti
+                @arguments << infos 
+
 		# but we can also mess with the args
 		# ex: skip first 2 bytes of the buffer
 		#patch_arg(1, pbuf+2)
 		#patch_arg(2, size-2)
 	end
+	
+        def pre_ctest1(handle, pbuf, size)
+		# spy on the api / trace calls
+		#bufdata = @dbg.memory[pbuf, size]
+		tmp = read_arglist
+                argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
+		#puts "arguments #{argomenti.inspect}"
+		argomenti.each_with_index do |arg,index|
+			arg = arg.to_s(16) 
+			puts "argomento #{arg}"
+		end
+                # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
+                infos = Hash.new
+                infos["name"] = "ctest1"
+                infos["args"] = argomenti
+                @arguments << infos
+	end
+
+        def get_arguments
+          # Returns an array containing an Hash structure for every wrapped function
+          @arguments
+        end
 
 	#def post_WriteFile(retval, arglistcopy)
 		# we can patch the API return value with this
@@ -222,12 +254,4 @@ class MyHook < ApiHook
 #	end
 end
 
-# name says it all
-#Metasm::WinOS.get_debug_privilege
 
-# run our Hook engine on a running 'notepad' instance
-MyHook.new('prog')
-
-# the script ends when notepad exits
-
-end

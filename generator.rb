@@ -45,7 +45,7 @@ begin
       next if sym.name == "_fini"
 
       function_name = sym.name
-      #params_list = get_params_from_source
+      #params_list = Stuff.get_params_from_process
       #params_list = get_params_from_include
 
       wrapped_code = Stuff.init_wrappers(library)
