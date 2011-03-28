@@ -36,8 +36,19 @@ gem install ruby-elf
 
 NB: require 'rubygems' in tutti gli script
 
-IDEA: dato che non sono sicuro dei parametri posso sfruttare ruby-ffi.
-Posso facilmente scriptare il binding di codice ruby alla libreria.
-In questo modo posso tentare il binding alla libreria usando tipi diversi per capire quale sia il tipo giusto.
-una volta capito questo uso il generatore di wrapper per generare il wrapper giusto e smanettare con i parametri.
+---- Wrap library tools ----
+* export_symbols.rb: un semplice script che permette di ottenere una lista di tutti
+                      i simboli esportati da una libreria dinamica.
+                      Nel caso specifico vengono listati solo i simboli esportati
+                      nella sezione .TEXT del binario, che si presume siano i 
+                      simboli definiti dalla libreria stessa.
 
+* little_parser.rb: script che permette di costruire un AST del file sorgente passato
+                    come argomento.
+                    Modificandolo e' possibile ottenere utili informazioni su numero
+                    e tipo dei parametri dei vari prototipi di funzione dichiarati
+                    in un file sorgente
+
+* stuff.rb: contiene una serie di helper functions.
+
+* 
