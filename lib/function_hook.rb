@@ -208,6 +208,7 @@ class LibraryHook < ApiHook
                 infos = Hash.new
                 infos["name"] = "ctest2"
                 infos["args"] = argomenti
+                infos["num"] = argomenti.length
                 @arguments << infos 
 
 		# but we can also mess with the args
@@ -222,7 +223,7 @@ class LibraryHook < ApiHook
 		tmp = read_arglist
                 argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
 		#puts "arguments #{argomenti.inspect}"
-		argomenti.each_with_index do |arg,index|
+		argomenti.each do |arg|
 			arg = arg.to_s(16) 
 			puts "argomento #{arg}"
 		end
@@ -230,6 +231,7 @@ class LibraryHook < ApiHook
                 infos = Hash.new
                 infos["name"] = "ctest1"
                 infos["args"] = argomenti
+                infos["num"] = argomenti.length
                 @arguments << infos
 	end
 

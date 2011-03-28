@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # Usa ruby-elf per parsare il binario elf, stampa i simboli globali definiti
 # nella text section del file
-#
+
 require 'stuff'
 require 'rubygems' # usato per poter sfruttare la gemma ruby-elf
 require 'elf'

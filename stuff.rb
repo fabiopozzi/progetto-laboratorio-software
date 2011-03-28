@@ -4,6 +4,7 @@ require 'function_hook.rb'
 require 'pp'
 
 module Stuff
+  FILENAME = './options'
   def Stuff.init_wrappers(library_name)
     # Returns an hash containing the code to be inserted in each wrapper function.
     # Author:: Fabio Pozzi (mailto:pozzi.fabio@gmail.com)
@@ -28,6 +29,20 @@ module Stuff
         pp argomenti
         argomenti
   end
+
+  def Stuff.get_library_name
+    File.open(FILENAME).each do |option|
+      if(/LIB/ ~= option) # o qualcosa di simile
+        parts = option.split(/\t/)
+        library_name = parts[1] # LIB=<tab>library_name is the configuration schema
+        return library_name
+      end
+    end
+  end
+  def Stuff.get_functions_list
+    # Retrieves a list of functions to be wrapped by our code
+  end
 end
 
-Stuff.get_params_from_process
+#Stuff.get_params_from_process
+Stuff.get_library_name
