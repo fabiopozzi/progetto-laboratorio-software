@@ -7,15 +7,16 @@ int ctest2(int );
 
 int main()
 {
-	int x;
-        int y;
+  int x;
+  int y;
 
-	char c;
-	scanf("%c",&c);
-	x = ctest2(5);
-        y = ctest1(10);
-	printf("Valx=%d\n",x);
+  char c;
+  scanf("%c",&c);
+  x = ctest2(5);
+  y = ctest1(10);
+  printf("Valx=%d\n",x);
+  printf("Valy=%d\n",y);
 
-	return 0;
+  return 0;
 }
 
