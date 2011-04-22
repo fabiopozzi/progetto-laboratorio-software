@@ -1,12 +1,19 @@
-#	Versione customizzata e modificata di dbg-apihook contenuto in metasm
+require 'bombshell'
 
+module Wrapper
+  class Shell
+    class Hook < Bombshell::Environment
+      include Bombshell::Shell
+      prompt_with 'wrapperbot'
+
+      def generate( library_name, functions, output_file)
+fixed_part =<<'EOS'
+#   Versione customizzata e modificata di dbg-apihook contenuto in metasm
 #    This file is part of Metasm, the Ruby assembly manipulation suite
 #    Copyright (C) 2006-2009 Yoann GUILLOT
 #
 #    Licence is LGPL, see LICENCE in the top-level directory
 
-
-#
 # This sample defines an ApiHook class, that you can subclass to easily hook functions
 # in a debugged process. Your custom function will get called whenever an API function is,
 # giving you access to the arguments, you can also take control just before control returns
@@ -19,9 +26,6 @@ class ApiHook
 	# rewrite this function to list the hooks you want
 	# return an array of hashes
 	def setup
-		#[{ :function => 'WriteFile', :abi => :stdcall },	# standard function hook
-		# { :module => 'Foo.dll', :rva => 0x2433,		# arbitrary code hook
-		#   :abi => :fastcall, :hookname => 'myhook' }]		# hooks named pre_myhook/post_myhook
 	end
 
 	# initialized from a Debugger or a process description that will be debugged
@@ -29,7 +33,7 @@ class ApiHook
 	def initialize(dbg)
 		if not dbg.kind_of? Metasm::Debugger
 			process = Metasm::OS.current.find_process(dbg)
-			raise 'no such process' if not process
+			raise "no such process" if not process
 			dbg = process.debugger
 		end
 		dbg.loadallsyms
@@ -160,9 +164,8 @@ class ApiHook
 end
 
 
-
-# this is the class you have to define to hook
-# 
+# This is the class you have to define to hook a function
+#
 # setup() defines the list of hooks as an array of hashes
 # for exported functions, simply use :function => function name
 # for arbitrary hook, :module => 'module.dll', :rva => 0x1234, :hookname => 'myhook' (call pre_myhook/post_myhook)
@@ -182,78 +185,77 @@ class LibraryHook < ApiHook
 	end
 
 	def initialize(process, function_hash)
-                @arguments = Array.new
+    @arguments = Array.new
 		@h_hash = function_hash
 		super(process)
 	end
 
-	def init_prerun
-		puts "hooks ready, go for it!"
-	end
+  def init_prerun
+    puts "hooks ready, go for it!"
+  end
 
-	def pre_ctest2(handle, pbuf, size)
-		# we can skip the function call with this
-		#finish(28)
-
-		# spy on the api / trace calls
-		#bufdata = @dbg.memory[pbuf, size]
-		tmp = read_arglist
-                argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
-		#puts "arguments #{argomenti.inspect}"
-		argomenti.each do |arg|
-			addr = arg.to_s(16)
-			puts "argomento #{addr.to_s}"
-		end
-                # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
-                infos = Hash.new
-                infos["name"] = "ctest2"
-                infos["args"] = argomenti
-                infos["num"] = argomenti.length
-                @arguments << infos 
-
-		# but we can also mess with the args
-		# ex: skip first 2 bytes of the buffer
-		#patch_arg(1, pbuf+2)
-		#patch_arg(2, size-2)
-	end
-	
-        def pre_ctest1(handle, pbuf, size)
-		# spy on the api / trace calls
-		#bufdata = @dbg.memory[pbuf, size]
-		tmp = read_arglist
-                argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
-		#puts "arguments #{argomenti.inspect}"
-		argomenti.each do |arg|
-			arg = arg.to_s(16) 
-			puts "argomento #{arg}"
-		end
-                # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
-                infos = Hash.new
-                infos["name"] = "ctest1"
-                infos["args"] = argomenti
-                infos["num"] = argomenti.length
-                @arguments << infos
-	end
-
-        def get_arguments
-          # Returns an array containing an Hash structure for every wrapped function
-          @arguments
-        end
-
-	#def post_WriteFile(retval, arglistcopy)
-		# we can patch the API return value with this
-		#patch_retval(42)
-
-		# finish messing with the args: fake the nrofbyteswritten
-#		handle, pbuf, size, pwritten, overlap = arglistcopy
-#		written = @dbg.memory_read_int(pwritten)
-#		if written == size
-#			# if written everything, patch the value so that the program dont detect our intervention
-#			@dbg.memory_write_int(pwritten, written+2)
-#		end
-#
-#		puts "write retval: #{retval}, written: #{written} bytes"
-#	end
+  def get_arguments
+    # Returns an array containing an Hash structure for every wrapped function
+    @arguments
+  end
 end
 
+EOS
 
+functions.each do |function|
+
+function_hook=<<EOS
+
+  def pre_#{function}(handle, pbuf, size)
+    # spy on the api / trace calls
+    #bufdata = @dbg.memory[pbuf, size]
+    tmp = read_arglist
+    argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
+    argomenti.each do |arg|
+      addr = arg.to_s(16)
+    end
+    # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
+    infos = Hash.new
+    infos[:name] = "#{function}"
+    infos[:args] = argomenti
+    infos[:num] = argomenti.length
+    @arguments << infos
+  end
+EOS
+fixed_part = fixed_part + function_hook
+end
+f = File.open( output_file ,"w+")
+f.puts( fixed_part )
+return true
+end #end generator
+
+  # Il metodo apre il file contenente tutti i punti di interesse dello stato
+  # # e cerca un match, restituendo un array con tutti i risultati del grep
+  def Stuff.file_grep( search_string )
+    results = Array.new
+    #puts search_string
+    File.open( OPTIONS_FILE ) do |fh|
+      fh.grep( /(.*)#{search_string}(.*)/ ) do |line|
+        results << line
+      end
+    end
+    results
+  end
+
+  def Stuff.get_library_name
+    raw_line = Stuff.file_grep("LIB")
+    line = raw_line.first.chomp
+    #pp raw_line
+
+    name_array = line.split(/ /)   #LIB=<tab>library_name is the configuration schema
+    #puts name_array[1]
+    return name_array[1] # the name is the 2nd element, the one after the token separator
+  end
+
+
+
+
+
+      end
+  end
+end

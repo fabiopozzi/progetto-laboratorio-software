@@ -1,21 +1,12 @@
-#!/usr/bin/env ruby
-# Usa ruby-elf per parsare il binario elf, stampa i simboli globali definiti
-# nella text section del file
-
-require 'rubygems' # usato per poter sfruttare la gemma ruby-elf
-require 'elf'
-require 'pp'
-
-module Generator
-
-  def Generator.hook_generator(functions)
-fixed_part =<<'EOS'
 #   Versione customizzata e modificata di dbg-apihook contenuto in metasm
+
 #    This file is part of Metasm, the Ruby assembly manipulation suite
 #    Copyright (C) 2006-2009 Yoann GUILLOT
 #
 #    Licence is LGPL, see LICENCE in the top-level directory
 
+
+#
 # This sample defines an ApiHook class, that you can subclass to easily hook functions
 # in a debugged process. Your custom function will get called whenever an API function is,
 # giving you access to the arguments, you can also take control just before control returns
@@ -35,7 +26,7 @@ class ApiHook
 	def initialize(dbg)
 		if not dbg.kind_of? Metasm::Debugger
 			process = Metasm::OS.current.find_process(dbg)
-			raise "no such process" if not process
+			raise 'no such process' if not process
 			dbg = process.debugger
 		end
 		dbg.loadallsyms
@@ -166,8 +157,9 @@ class ApiHook
 end
 
 
+
 # This is the class you have to define to hook a function
-#
+# 
 # setup() defines the list of hooks as an array of hashes
 # for exported functions, simply use :function => function name
 # for arbitrary hook, :module => 'module.dll', :rva => 0x1234, :hookname => 'myhook' (call pre_myhook/post_myhook)
@@ -196,6 +188,42 @@ class LibraryHook < ApiHook
     puts "hooks ready, go for it!"
   end
 
+  def pre_ctest2(handle, pbuf, size)
+    # spy on the api / trace calls
+    #bufdata = @dbg.memory[pbuf, size]
+    tmp = read_arglist
+    argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
+    #puts "arguments #{argomenti.inspect}"
+    argomenti.each do |arg|
+      addr = arg.to_s(16)
+      #puts "argomento #{addr.to_s}"
+    end
+    # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
+    infos = Hash.new
+    infos[:name] = "ctest2"
+    infos[:args] = argomenti
+    infos[:num] = argomenti.length
+    @arguments << infos
+  end
+
+  def pre_ctest1(handle, pbuf, size)
+    # spy on the api / trace calls
+    #bufdata = @dbg.memory[pbuf, size]
+    tmp = read_arglist
+    argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
+    #puts "arguments #{argomenti.inspect}"
+    argomenti.each do |arg|
+      arg = arg.to_s(16)
+      #puts "argomento #{arg}"
+    end
+    # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
+    infos = Hash.new
+    infos[:name] = "ctest1"
+    infos[:args] = argomenti
+    infos[:num] = argomenti.length
+    @arguments << infos
+  end
+
   def get_arguments
     # Returns an array containing an Hash structure for every wrapped function
     @arguments
@@ -203,35 +231,3 @@ class LibraryHook < ApiHook
 end
 
 
-EOS
-
-functions.each do |function|
-
-function_hook=<<EOS
-
-  def pre_#{function}(handle, pbuf, size)
-    # spy on the api / trace calls
-    #bufdata = @dbg.memory[pbuf, size]
-    tmp = read_arglist
-    argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
-    argomenti.each do |arg|
-      addr = arg.to_s(16)
-    end
-    # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
-    infos = Hash.new
-    infos[:name] = "#{function}"
-    infos[:args] = argomenti
-    infos[:num] = argomenti.length
-    @arguments << infos
-  end
-EOS
-fixed_part = fixed_part + function_hook
-end
-   return fixed_part
-  end #end generator
-end #end Module
-
-
-  f = File.open("output.rb","w+")
-  res = Generator.hook_generator(["ctest1","ctest2"])
-  f.puts( res )
