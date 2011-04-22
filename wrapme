@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+$LOAD_PATH << './lib'
+
+require 'rubygems'
+require 'wrapper'
+require 'bombshell'
+
+Bombshell.launch(Wrapper::Shell)
+
+
