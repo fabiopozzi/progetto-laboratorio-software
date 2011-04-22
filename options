@@ -1,2 +1,5 @@
-LIB=	libpippo.so
+LIB libtest.so
+FUNCTION ctest2
+FUNCTION ctest1
+
 
