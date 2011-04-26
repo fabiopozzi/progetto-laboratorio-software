@@ -1,41 +1,29 @@
-require 'bombshell'
-
-module Wrapper
-    class Interceptor < Bombshell::Environment
-      include Bombshell::Shell
-      prompt_with 'interceptor'
-
-      # costanti
-      DEFAULT_OPTION_FILE = './options'
-      DEFAULT_OUTPUT_FILE = './output.rb'
-      @actual_output_file = ''
-      @option_filename = nil
-      LOGLEVEL = 1
-
-      #codice male indentato causa stringa multi linea
-      def generate( library_name, functions, output_file = DEFAULT_OUTPUT_FILE )
-      tmp = output_file.split('/') #I assume the path includes slashes
-      puts tmp[tmp.length-1] unless tmp[1].nil?
-      @actual_output_file = output_file
-fixed_part =<<'EOS'
-#   Versione customizzata e modificata di dbg-apihook contenuto in metasm
 #    This file is part of Metasm, the Ruby assembly manipulation suite
 #    Copyright (C) 2006-2009 Yoann GUILLOT
 #
 #    Licence is LGPL, see LICENCE in the top-level directory
 
+
+#
 # This sample defines an ApiHook class, that you can subclass to easily hook functions
 # in a debugged process. Your custom function will get called whenever an API function is,
 # giving you access to the arguments, you can also take control just before control returns
 # to the caller.
 # See the example in the end for more details.
+# As a standalone application, it hooks WriteFile in the 'notepad' process, and make it
+# skip the first two bytes of the buffer.
+#
 
 require 'metasm'
+require 'bombshell'
 
 class ApiHook
 	# rewrite this function to list the hooks you want
 	# return an array of hashes
 	def setup
+		#[{ :function => 'WriteFile', :abi => :stdcall },	# standard function hook
+		# { :module => 'Foo.dll', :rva => 0x2433,		# arbitrary code hook
+		#   :abi => :fastcall, :hookname => 'myhook' }]		# hooks named pre_myhook/post_myhook
 	end
 
 	# initialized from a Debugger or a process description that will be debugged
@@ -43,7 +31,7 @@ class ApiHook
 	def initialize(dbg)
 		if not dbg.kind_of? Metasm::Debugger
 			process = Metasm::OS.current.find_process(dbg)
-			raise "no such process" if not process
+			raise 'no such process' if not process
 			dbg = process.debugger
 		end
 		dbg.loadallsyms
@@ -174,8 +162,11 @@ class ApiHook
 end
 
 
-# This is the class you have to define to hook a function
-#
+
+#if __FILE__ == $0
+
+# this is the class you have to define to hook
+# 
 # setup() defines the list of hooks as an array of hashes
 # for exported functions, simply use :function => function name
 # for arbitrary hook, :module => 'module.dll', :rva => 0x1234, :hookname => 'myhook' (call pre_myhook/post_myhook)
@@ -188,114 +179,62 @@ end
 #  skip the function call with finish(fake_retval) (!) needs a correct :abi & param count !
 # the post_hook receives the function return value
 #  change it with patch_ret(newval)
-class LibraryHook < ApiHook
-
+class MyHook < ApiHook
+  @h_hash = []
 	def setup
-		@h_hash
+		#[{ :function => 'ctest2', :abi => :stdcall }]
+    @h_hash
 	end
 
-	def initialize(process, function_hash)
-    @arguments = Array.new
-		@h_hash = function_hash
-		super(process)
+  def initialize( process, function_hash)
+    @h_hash = function_hash
+    super(process)
+  end
+
+	def init_prerun
+		puts "hooks ready, exec ctest2"
 	end
 
-  def init_prerun
-    puts "hooks ready, go for it!"
-  end
-
-  def get_arguments
-    # Returns an array containing an Hash structure for every wrapped function
-    @arguments
-  end
-end
-
-EOS
-
-functions.each do |function|
-
-function_hook=<<EOS
-
-  def pre_#{function}(handle, pbuf, size)
-    # spy on the api / trace calls
-    #bufdata = @dbg.memory[pbuf, size]
+	def pre_ctest2(handle, pbuf, size)
+		# we can skip the function call with this
+		#finish(28)
     tmp = read_arglist
-    argomenti = tmp.slice(0..-3) # saltare gli ultimi due argomenti
+    argomenti = tmp.slice(0..-3)
+    #tmp.each do |arg|
     argomenti.each do |arg|
-      addr = arg.to_s(16)
+      puts arg
     end
-    # Create an hash structure to insert all the infos about the wrapped function, for example name and an array with the arguments
-    infos = Hash.new
-    infos[:name] = "#{function}"
-    infos[:args] = argomenti
-    infos[:num] = argomenti.length
-    @arguments << infos
-  end
-EOS
-fixed_part = fixed_part + function_hook
+		# spy on the api / trace calls
+		#bufdata = @dbg.memory[pbuf, size]
+		#puts "writing #{bufdata.inspect}"
+
+		# but we can also mess with the args
+		# ex: skip first 2 bytes of the buffer
+		#patch_arg(1, pbuf+2)
+		#patch_arg(2, size-2)
+	end
+
 end
-f = File.open( output_file ,"w+")
-f.puts( fixed_part )
-return true
-end #end generator
 
-    def set_option_filename( filename = DEFAULT_OPTION_FILE )
-      @option_filename = filename
-    end
+# name says it all
+#Metasm::WinOS.get_debug_privilege
 
-        # Il metodo apre il file contenente tutti i punti di interesse dello stato
-        # # e cerca un match, restituendo un array con tutti i risultati del grep
-        def file_grep( search_string )
-          results = Array.new
-          puts search_string if LOGLEVEL > 2
+if __FILE__ == $0
+# run our Hook engine on a running 'notepad' instance
+#MyHook.new('prog')
+  MyHook.new('prog', [{ :function => 'ctest2', :abi => :stdcall }])
+# the script ends when notepad exits
 
-          File.open( @option_filename ) do |fh|
-            fh.grep( /(.*)#{search_string}(.*)/ ) do |line|
-              results << line
-            end
-          end
-          results
-        end
+end
+#
+module Wrapper
+  class Interceptor < Bombshell::Environment
+    include Bombshell::Shell
+    prompt_with 'interceptor'
 
-        def get_library_name
-
-          raw_line = file_grep("LIB")
-          line = raw_line.first.chomp
-          pp raw_line if LOGLEVEL > 2
-
-          name_array = line.split(/ /)   #LIB=<tab>library_name is the configuration schema
-          puts name_array[1] if LOGLEVEL > 2
-          return name_array[1] # the name is the 2nd element, the one after the token separator
-        end
-
-    def get_functions_list
-      # Retrieves a list of functions to be wrapped by our code
-      list = Array.new
-      raw_list = file_grep("FUNCTION")
-      raw_list.each do |line|
-        line = line.chomp # removes trailing whitespace and '\n'
-        name_array = line.split(/ /)
-        list << name_array[1]
-      end
-      list
-    end
-
-    def get_params_from_process
-      load @actual_output_file
-      h_hash = [{ :function => 'ctest1'},{:function => 'ctest2'}]
-      #h_hash = [{ :function => 'ctest2'}]
-      # run our Hook engine on a running 'notepad' instance
-      l = LibraryHook.new('prog', h_hash)
-      argomenti = l.get_arguments #get infos about wrapped functions
-      pp argomenti
-      argomenti
-    end
-
-    def default_setup
-      set_option_filename
-      l = get_library_name
-      f = get_functions_list
-      return l, f
+    def vai
+      #MyHook.new('prog')
+      MyHook.new('prog', [{ :function => 'ctest2', :abi => :stdcall }])
     end
   end
 end
