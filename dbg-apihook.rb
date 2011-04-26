@@ -179,9 +179,16 @@ if __FILE__ == $0
 # the post_hook receives the function return value
 #  change it with patch_ret(newval)
 class MyHook < ApiHook
+  @h_hash = []
 	def setup
-		[{ :function => 'ctest2', :abi => :stdcall }]
+		#[{ :function => 'ctest2', :abi => :stdcall }]
+    @h_hash
 	end
+
+  def initialize( process, function_hash)
+    @h_hash = function_hash
+    super(process)
+  end
 
 	def init_prerun
 		puts "hooks ready, exec ctest2"
@@ -212,8 +219,8 @@ end
 #Metasm::WinOS.get_debug_privilege
 
 # run our Hook engine on a running 'notepad' instance
-MyHook.new('prog')
-
+#MyHook.new('prog')
+MyHook.new('prog', [{ :function => 'ctest2', :abi => :stdcall }])
 # the script ends when notepad exits
 
 end
